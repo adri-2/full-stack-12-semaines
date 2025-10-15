@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 import uuid
+from django.core.exceptions import ValidationError
 
 # Catégorie de produits
 class BaseModel(models.Model):
@@ -18,6 +19,11 @@ class Category(BaseModel):
 
     def __str__(self):
         return self.name
+    
+    def save(self,  *args, **kwargs):
+        if not self.description:
+            self.description =  f"Description de la catégorie : {self.name}."
+        return super().save( *args, **kwargs)
 
 # Produit vendu dans la boutique
 class Product(BaseModel):
@@ -35,6 +41,12 @@ class Product(BaseModel):
         verbose_name='Produit'
         verbose_name_plural='Produits'
         indexes =[models.Index(fields=['name', 'category'], name='product_name_category_idx')]
+        
+    def save(self, *args, **kwargs):
+        if Product.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
+            raise ValidationError(f"Le Produit '{self.name}' existe déjà.")
+            self.name = self.name.split().title()
+        return super().save( *args, **kwargs)
 
 
     def __str__(self):
