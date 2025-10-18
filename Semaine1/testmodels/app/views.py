@@ -28,7 +28,7 @@ MÉTHODES À CONNAÎTRE :
 """
 
 
-from rest_framework import generics, filters, status
+from rest_framework import generics, filters, status,viewsets
 from rest_framework.response import Response
 from .models import Category, Product, Order, OrderItem, Review, Client, Supplier
 from .serializers import CategorySerializer,CategoryListSerializer,CategoryDetailSerializer
@@ -47,14 +47,19 @@ class CategoryCreateView(generics.CreateAPIView):
 class CategoryListView(generics.ListAPIView):
     serializer_class =CategoryListSerializer
     queryset=Category.objects.all()   
+  
     
     # def get_queryset(self):
+    #     queryset = Category.objects.all().annotate(products_count=Count('products'))
         
-    #     return (Category.objects.annotate(product_count=Count('products')).filter(product_count__gt=0))
-    
+    #     return queryset
 class CategoryDetailView(generics.RetrieveAPIView):
     serializer_class =CategoryDetailSerializer
     queryset=Category.objects.all()   
+    
+    # def get_queryset(self):
+    #     queryset = Category.objects.all().prefetch_related('products')
+    #     return queryset
     # lookup_field = 'id'  # 👈 On dit à la vue d’utiliser "id" au lieu de "pk"
 
     
@@ -62,5 +67,61 @@ class CategoryDetailView(generics.RetrieveAPIView):
 class CategoryDeleteView(generics.DestroyAPIView):
     serializer_class =CategoryDetailSerializer
     queryset=Category.objects.all()   
+    
+
+
+
+# ============================================================================
+# 📁 SUPPLIER VIEWSET
+# ============================================================================
+
+# TODO 1: Créer SupplierViewSet
+# CONSIGNES :
+# - Hériter de ModelViewSet
+# - Utiliser les 3 serializers selon l'action
+# - Ajouter la recherche sur 'name', 'contact_name', 'email'
+# - Ajouter le tri sur 'name', 'created_at'
+# - Permissions : IsAuthenticatedOrReadOnly
+
+class SupplierViewSet(viewsets.ModelViewSet):
+    """
+    📦 TODO : ViewSet pour gérer les fournisseurs 
+    """
+    queryset = Supplier.objects.all()
+    # TODO: permission_classes
+    # TODO: filter_backends
+    # TODO: search_fields
+    # TODO: ordering_fields
+    # TODO: ordering
+    
+    def get_serializer_class(self):
+        """TODO : Retourner le bon serializer selon l'action"""
+        if self.action == 'create' or self.action == 'update' or self.action == 'partial_update':
+            from .serializers import SupplierCreateSerializer
+            return SupplierCreateSerializer
+        elif self.action == 'list':
+            from .serializers import SupplierListSerializer
+            return SupplierListSerializer
+        else:
+            from .serializers import SupplierDetailSerializer
+            return SupplierDetailSerializer
+    
+    def get_queryset(self):
+        """TODO : Optimiser les requêtes"""
+        queryset = Supplier.objects.all()
+        # TODO: Ajouter des annotations si nécessaire
+        # Optimisation : précharger les produits pour éviter le N+1 query problem
+        if self.action == 'list':
+            queryset = queryset.annotate(products_count=Count('products'))
+        elif self.action == 'retrieve':
+            queryset = queryset.prefetch_related('products')
+        return queryset
+    
+    # TODO: Action personnalisée 'products' - Liste des produits d'un fournisseur
+    # @action(detail=True, methods=['get'])
+    # def products(self, request, pk=None):
+    #     pass
+
+    
     
     
