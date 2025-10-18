@@ -24,7 +24,7 @@ class Order(models.Model):
         PENDING='prnding'
         CONFIRMED='Confirmed'
         CANCELLED='Cancelled' 
-    order_id=models.URLField(primary_key=True,default=uuid.uuid4)
+    order_id=models.UUIDField(primary_key=True,default=uuid.uuid4)
     user=models.ForeignKey(User,on_delete=models.CASCADE)
     created_at=models.DateTimeField(auto_now_add=True)
     states=models.CharField(max_length=10,choices=StatusChoices.choices,default=StatusChoices.PENDING)
