@@ -45,7 +45,7 @@ class Product(BaseModel):
     def save(self, *args, **kwargs):
         if Product.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
             raise ValidationError(f"Le Produit '{self.name}' existe déjà.")
-            self.name = self.name.split().title()
+        self.name = self.name.split().title()
         return super().save( *args, **kwargs)
 
 
@@ -61,14 +61,20 @@ class Order(BaseModel):
 
     order_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    client =models.ForeignKey('Client',on_delete=models.CASCADE, related_name='customer')
+    client =models.ForeignKey('Client',on_delete=models.CASCADE, related_name='orders')
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=StatusChoices.choices, default=StatusChoices.PENDING)
     products = models.ManyToManyField(Product, through="OrderItem", related_name="orders")
     
     class Meta:
         ordering=['-created_at']
-
+        
+    @property
+    def total_price(self):
+        """
+        Calcule la somme des sous-totaux de tous les articles de la commande.
+        """
+        return sum(item.item_subtotal for item in self.items.all())
     def __str__(self):
         return f"Order {self.order_id} by {self.user.username}"
 
@@ -76,11 +82,13 @@ class Order(BaseModel):
 class OrderItem(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
-    
+    quantity = models.PositiveIntegerField()    
 
     @property
     def item_subtotal(self):
+        """
+        Calcule le sous-total de cet article (prix * quantité).
+        """
         return self.product.price * self.quantity
 
     def __str__(self):
@@ -111,7 +119,22 @@ class Client(BaseModel):
     phone_number = models.CharField(max_length=15, blank=True)
     address = models.TextField(blank=True)
     
+    def save(self, *args,**kwargs):
+        if Client.objects.filter(email__iexact=self.email).exclude(pk=self.pk).exists():
+            raise ValidationError(f"L'Email '{self.email}' existe déjà.")
+        self.email = self.email
+        
+        return super().save(*args,**kwargs)
     
+    @property
+    def orders_subtotal(self):
+        """
+        Retourne le total des sous-totaux de toutes les commandes du client.
+        """
+        total = 0
+        for order in self.orders.all():  # 'orders' vient du related_name dans Order
+            total += order.total_price
+        return total
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

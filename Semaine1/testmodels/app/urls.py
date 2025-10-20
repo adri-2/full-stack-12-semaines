@@ -4,10 +4,11 @@ from .views import (CategoryCreateView,
                     CategoryListView,
                     CategoryDetailView,
                     CategoryDeleteView,
-                    SupplierViewSet,
+                    SupplierViewSet,ClientViewSet
                     )
 router = DefaultRouter()
 router.register(r'suppliers',SupplierViewSet, basename='supplier')
+router.register(r'client',ClientViewSet, basename='client')
 
 urlpatterns=[
     path('categorie/create/',CategoryCreateView.as_view(),name='categorie-create'),

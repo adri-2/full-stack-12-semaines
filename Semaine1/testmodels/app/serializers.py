@@ -28,7 +28,7 @@ ORDRE D'IMPLÉMENTATION :
 """
 
 from rest_framework import serializers
-from .models import Product,Category,Supplier,OrderItem,Order
+from .models import Product,Category,Supplier,OrderItem,Order,Client
 
 
 # ============================================================================
@@ -144,3 +144,85 @@ class SupplierDetailSerializer(serializers.ModelSerializer):
     def get_products_count(self, obj):
         return obj.products.count()
   
+
+# ============================================================================
+# 📁 CLIENT SERIALIZERS
+# ============================================================================
+
+# TODO 4: Créer les 3 serializers pour Client
+# CONSIGNES :
+# - ClientCreateSerializer : first_name, last_name, email, phone_number, address
+# - ClientListSerializer : id, first_name, last_name, email, orders_count
+# - ClientDetailSerializer : tous les champs + liste des commandes
+
+class ClientCreateSerializer(serializers.ModelSerializer):
+    """
+    ✍️ TODO : À compléter
+    """
+    class Meta:
+        model = Client
+        fields = [ 'first_name', 'last_name', 'email', 'phone_number', 'address']  # TODO
+    
+    # TODO: Validation sur email (vérifier qu'il est unique)
+    # TODO: Validation sur first_name et last_name (min 2 caractères)
+    def validate_first_name(self, value):
+        if len(value) < 2:
+            raise serializers.ValidationError("Le prénom doit contenir au moins 2 caractères.")
+        return value
+
+    def validate_last_name(self, value):
+        if len(value) < 2:
+            raise serializers.ValidationError("Le nom doit contenir au moins 2 caractères.")
+        return value
+
+    
+    
+
+
+class ClientListSerializer(serializers.ModelSerializer):
+    """
+    📋 TODO : À compléter
+    """
+    # TODO: Ajouter orders_count
+    orders_count =serializers.SerializerMethodField()
+    # TODO: Ajouter full_name (combinaison de first_name et last_name)
+    full_name =serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Client
+        fields = [ 'first_name', 'last_name', 'email', 'phone_number', 'address','orders_count','full_name']   # TODO
+        
+    def get_orders_count(self, obj):
+        
+        return obj.orders.count()
+    
+    def get_full_name(self, obj):
+        first_name=obj.first_name or""
+        last_name=obj.last_name or ""
+        full_name=f"{first_name} {last_name}".strip()
+        
+        return full_name
+
+
+class ClientDetailSerializer(serializers.ModelSerializer):
+    """
+    🔍 TODO : À compléter
+    """
+    # TODO: Ajouter la liste des commandes
+    orders_list =serializers.SerializerMethodField()
+    # TODO: Ajouter le montant total dépensé
+    total_price =serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Client
+        fields = '__all__'
+        
+        
+    def get_orders_list(self, obj):
+        return [[order.user,order.client,order.status] for order in obj.orders.all()[:5]]
+    
+        
+    def get_total_price(self, obj):    
+        
+        return obj.orders_subtotal
+    

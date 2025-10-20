@@ -41,10 +41,16 @@ from django.db.models import Count
 # ============================================================================
 
 class CategoryCreateView(generics.CreateAPIView):
+    """
+    📁 CategoryCreateView
+    """
     serializer_class = CategorySerializer
     queryset=Category.objects.all()
 
 class CategoryListView(generics.ListAPIView):
+    """
+    📁 CategoryListView
+    """
     serializer_class =CategoryListSerializer
     queryset=Category.objects.all()   
   
@@ -54,6 +60,9 @@ class CategoryListView(generics.ListAPIView):
         
     #     return queryset
 class CategoryDetailView(generics.RetrieveAPIView):
+    """
+    📁 CategoryDetailView
+    """
     serializer_class =CategoryDetailSerializer
     queryset=Category.objects.all()   
     
@@ -88,6 +97,9 @@ class SupplierViewSet(viewsets.ModelViewSet):
     📦 TODO : ViewSet pour gérer les fournisseurs 
     """
     queryset = Supplier.objects.all()
+    search_fields = ['name', 'address']  # Recherche sur ces champs
+    ordering_fields = ['name']  # Tri possible sur ces champs
+    ordering = ['name']  # Tri par défaut
     # TODO: permission_classes
     # TODO: filter_backends
     # TODO: search_fields
@@ -122,6 +134,47 @@ class SupplierViewSet(viewsets.ModelViewSet):
     # def products(self, request, pk=None):
     #     pass
 
+
+
+
+# ============================================================================
+# 📁 CLIENT VIEWSET
+# ============================================================================
+
+# TODO 2: Créer ClientViewSet
+# CONSIGNES :
+# - Recherche sur 'first_name', 'last_name', 'email'
+# - Tri sur 'last_name', 'created_at'
+# - Permissions : IsAuthenticated (les clients sont privés)
+# - Action personnalisée 'orders' : Liste des commandes du client
+
+
+class ClientViewSet(viewsets.ModelViewSet):
+    queryset = Client.objects.all()
+    search_fields=['first_name','email','address','last_name','phone_number']
+    ordering_fields=['first_name','email','address','last_name']
+    ordering=['first_name']
+    
+    def get_serializer_class(self):
+        if self.action == 'create' or self.action == 'update' or self.action =='partial_update':
+            from .serializers import ClientCreateSerializer
+            return ClientCreateSerializer
+        elif self.action =='list':
+            from .serializers import ClientListSerializer
+            return ClientListSerializer
+        else:
+            from .serializers import ClientDetailSerializer
+            return ClientDetailSerializer
+        
+    def get_queryset(self):
+        queryset=Client.objects.all()
+        if self.action=='list':
+            queryset=queryset.annotate(orders_count=Count('orders'))
+        elif self.action =='retrieve':
+            queryset =queryset.prefetch_related('orders')
+            
+        return queryset   
+    
     
     
     

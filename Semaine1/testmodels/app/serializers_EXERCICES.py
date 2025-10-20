@@ -427,8 +427,8 @@ class OrderItemDetailSerializer(serializers.ModelSerializer):
 - Category (3 serializers complets comme exemple)
 
 ❌ À FAIRE :
-- [ ] Supplier (3 serializers)
-- [ ] Client (3 serializers)
+- [x] Supplier (3 serializers)
+- [x] Client (3 serializers)
 - [ ] Product (3 serializers)
 - [ ] Review (3 serializers)
 - [ ] Order (3 serializers)
