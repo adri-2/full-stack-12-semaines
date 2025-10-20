@@ -19,19 +19,19 @@
 
 **EXERCICE 1 : Category (RÉVISION)**
 
-- [ ] Étudier CategoryCreateSerializer, CategoryListSerializer, CategoryDetailSerializer
-- [ ] Étudier CategoryViewSet
-- [ ] Tester les endpoints dans le navigateur : http://localhost:8000/api/categories/
-- [ ] Créer/Modifier/Supprimer des catégories via l'API
+- [x] Étudier CategoryCreateSerializer, CategoryListSerializer, CategoryDetailSerializer
+- [x] Étudier CategoryViewSet
+- [x] Tester les endpoints dans le navigateur : http://localhost:8000/api/categories/
+- [x] Créer/Modifier/Supprimer des catégories via l'API
 
 **EXERCICE 2 : Supplier**
 
-- [ ] ✍️ Compléter SupplierCreateSerializer
-- [ ] ✍️ Compléter SupplierListSerializer
-- [ ] ✍️ Compléter SupplierDetailSerializer
-- [ ] ✍️ Compléter SupplierViewSet
-- [ ] 🔗 Enregistrer dans urls_EXERCICES.py
-- [ ] 🧪 Tester : http://localhost:8000/api/suppliers/
+- [x] ✍️ Compléter SupplierCreateSerializer
+- [x] ✍️ Compléter SupplierListSerializer
+- [x] ✍️ Compléter SupplierDetailSerializer
+- [x] ✍️ Compléter SupplierViewSet
+- [x] 🔗 Enregistrer dans urls_EXERCICES.py
+- [x] 🧪 Tester : http://localhost:8000/api/suppliers/
 
 **EXERCICE 3 : Client**
 
