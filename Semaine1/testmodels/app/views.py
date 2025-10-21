@@ -156,6 +156,9 @@ class ClientViewSet(viewsets.ModelViewSet):
     ordering=['first_name']
     
     def get_serializer_class(self):
+        
+        
+        # if self.action in ['create', 'update', 'partial_update']:
         if self.action == 'create' or self.action == 'update' or self.action =='partial_update':
             from .serializers import ClientCreateSerializer
             return ClientCreateSerializer
@@ -171,10 +174,26 @@ class ClientViewSet(viewsets.ModelViewSet):
         if self.action=='list':
             queryset=queryset.annotate(orders_count=Count('orders'))
         elif self.action =='retrieve':
-            queryset =queryset.prefetch_related('orders')
+                        # Précharger les commandes pour éviter les requêtes multiples
+            queryset = queryset.prefetch_related('orders__items', 'orders__items__product','orders__user')
+
             
         return queryset   
     
     
     
+class ProductViewApi(viewsets.ModelViewSet):
+    queryset=Product.objects.all()
     
+    def get_serializer_class(self):
+        if self.action  in ['create', 'update', 'partial_update']:
+            from .serializers import ProductCreateSerializer
+            return ProductCreateSerializer
+        elif self.action =='list':
+            from .serializers import ProductListSerializer
+            return ProductListSerializer
+
+        else:
+            from .serializers import ProductDetailSerializer
+            return ProductDetailSerializer
+       

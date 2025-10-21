@@ -28,7 +28,8 @@ ORDRE D'IMPLÉMENTATION :
 """
 
 from rest_framework import serializers
-from .models import Product,Category,Supplier,OrderItem,Order,Client
+from .models import Product,Category,Supplier,OrderItem,Order,Client,Review
+from django.db.models import Avg
 
 
 # ============================================================================
@@ -60,12 +61,15 @@ class CategoryListSerializer(serializers.ModelSerializer):
    
    
     
-class CategoryDetailSerializer(serializers.ModelSerializer):
+class CategoryDetailSerializer(serializers.HyperlinkedModelSerializer):
     product_names = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ['id','name','description', 'product_names','created_at']   
+        fields = ['id','name','description', 'product_names','created_at','url']   
+        extra_kwargs={
+            'url':{'view_name':'category-detail','lookup_field':'pk'}
+        }
         
     def get_product_names(self, obj):
         return [ product.name  for product in obj.products.all()[:5]]
@@ -124,7 +128,7 @@ class SupplierListSerializer(serializers.ModelSerializer):
 # - Tous les champs du modèle
 # - Ajouter la liste des produits fournis (nom et prix seulement)
 
-class SupplierDetailSerializer(serializers.ModelSerializer):
+class SupplierDetailSerializer(serializers.HyperlinkedModelSerializer):
     """
     🔍 TODO : Serializer pour les détails complets d'un fournisseur
     """
@@ -134,8 +138,11 @@ class SupplierDetailSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Supplier
-        fields =  ['id', 'name', 'email','contact_name','address', 'products_count','products']  # TODO: Être plus explicite
-    
+        fields =  ['id', 'name', 'email','contact_name','address', 'products_count','products','url']  # TODO: Être plus explicite
+        extra_kwargs={
+            'url':{'view_name':'supplier-detail','lookup_field':'pk'}
+        }
+        
     # TODO: Implémenter get_products
     
     def get_products(self, obj):
@@ -212,17 +219,278 @@ class ClientDetailSerializer(serializers.ModelSerializer):
     orders_list =serializers.SerializerMethodField()
     # TODO: Ajouter le montant total dépensé
     total_price =serializers.SerializerMethodField()
-    
+     
     class Meta:
         model = Client
         fields = '__all__'
         
         
     def get_orders_list(self, obj):
-        return [[order.user,order.client,order.status] for order in obj.orders.all()[:5]]
+        return [ {               "id": order.id,                "user": order.user.username if order.user else None,
+                "client": f"{order.client.first_name} {order.client.last_name}",
+                "status": order.status,
+                "created_at": order.created_at.isoformat() if hasattr(order, 'created_at') else None,
+                "total": str(order.total) if hasattr(order, 'total') else None
+            }
+                for order in obj.orders.all()[:5]]
     
         
     def get_total_price(self, obj):    
         
         return obj.orders_subtotal
+    
+
+# ============================================================================
+# 📁 PRODUCT SERIALIZERS
+# ============================================================================
+
+# TODO 5: Créer les 3 serializers pour Product
+# CONSIGNES IMPORTANTES :
+# - ProductCreateSerializer : 
+#   * Accepter category comme ID (pas d'objet complet)
+#   * Accepter suppliers comme liste d'IDs
+#   * Validation : price > 0
+#   * Validation : stock >= 0
+#   * Validation : name doit faire au moins 3 caractères
+
+class ProductCreateSerializer(serializers.ModelSerializer):
+    """
+    ✍️ TODO : Serializer pour créer un produit
+    
+    ATTENTION : 
+    - category doit être un PrimaryKeyRelatedField
+    - suppliers doit être un PrimaryKeyRelatedField avec many=True
+    """
+    # TODO: Définir category correctement
+    category=serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    # TODO: Définir suppliers correctement
+    supplier = serializers.PrimaryKeyRelatedField(queryset=Supplier.objects.all(),many=True)
+    
+    class Meta:
+        model = Product
+        fields = ['name','price','description','category','image','stock','supplier']  # TODO
+    
+    # TODO: validate_price
+    def validate_price(self,data):
+        if data < 0:
+            raise serializers.ValidationError("Validation : price > 0")
+        return data
+
+    # TODO: validate_stock
+    def validate_stock(self, attrs):
+        if attrs <=0:
+            raise serializers.ValidationError(" Validation : stock >= 0")
+        return attrs
+    # TODO: validate_name
+
+
+class ProductListSerializer(serializers.ModelSerializer):
+    """
+    📋 TODO : Serializer pour lister les produits
+    
+    AFFICHER :
+    - id, name, price, stock
+    - category_name (nom de la catégorie, pas l'ID)
+    - in_stock (boolean - True si stock > 0)
+    """
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    # TODO: Ajouter in_stock
+    in_stock = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'category_name','in_stock','url']  # TODO: Compléter
+        # extra_kwagrs={'url':{'view_name':'','lookup_field':'pk'}}
+    def get_in_stock(self,obj):
+        
+        return obj.in_stock
+
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    """
+    🔍 TODO : Serializer pour les détails d'un produit
+    
+    AFFICHER :
+    - Tous les champs
+    - Détails de la catégorie (objet complet)
+    - Liste des fournisseurs (objets complets)
+    - Moyenne des notes (reviews)
+    - Nombre d'avis
+    """
+    category = CategoryDetailSerializer(read_only=True)
+    # TODO: suppliers (liste complète)
+    supplier = SupplierDetailSerializer(read_only=True,many=True)
+    # TODO: average_rating
+    # TODO: reviews_count
+    reviews_count =serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Product
+        fields = '__all__'
+        
+    def get_average_rating(self, obj):
+        """Calcule la moyenne des notes pour ce produit."""
+        avg = obj.reviews.aggregate(Avg('rating'))['rating__avg']
+        return round(avg, 1) if avg else 0.0
+
+    def get_reviews_count(self, obj):
+        """Renvoie le nombre d'avis liés à ce produit."""
+        return obj.reviews.count()
+
+
+# ============================================================================
+# 📁 REVIEW SERIALIZERS
+# ============================================================================
+
+# TODO 6: Créer les 3 serializers pour Review
+# CONSIGNES :
+# - ReviewCreateSerializer : product (ID), user (ID), rating, comment
+#   * Validation : rating entre 1 et 5
+#   * Validation : comment doit faire au moins 10 caractères
+# - ReviewListSerializer : id, product_name, user_name, rating, created_at
+# - ReviewDetailSerializer : tous les champs avec détails du produit
+
+class ReviewCreateSerializer(serializers.ModelSerializer):
+    """
+    ✍️ TODO : À compléter
+    """
+    class Meta:
+        model = Review
+        fields = []  # TODO
+    
+    # TODO: validate_rating (entre 1 et 5)
+    # TODO: validate_comment (min 10 caractères)
+
+
+class ReviewListSerializer(serializers.ModelSerializer):
+    """
+    📋 TODO : À compléter
+    """
+    # TODO: Ajouter product_name
+    # TODO: Ajouter username
+    
+    class Meta:
+        model = Review
+        fields = []  # TODO
+
+
+class ReviewDetailSerializer(serializers.ModelSerializer):
+    """
+    🔍 TODO : À compléter
+    """
+    # TODO: Inclure les détails du produit
+    # TODO: Inclure les infos de l'utilisateur
+    
+    class Meta:
+        model = Review
+        fields = '__all__'
+
+
+# ============================================================================
+# 📁 ORDER SERIALIZERS (NIVEAU AVANCÉ)
+# ============================================================================
+
+# TODO 7: Créer les 3 serializers pour Order
+# CONSIGNES COMPLEXES :
+# - OrderCreateSerializer :
+#   * user (ID), client (ID), status
+#   * NE PAS inclure products ici (on utilisera OrderItem)
+# - OrderListSerializer :
+#   * id, order_id, client_name, status, created_at, total_amount
+#   * total_amount : calculer la somme de tous les items
+# - OrderDetailSerializer :
+#   * Tous les champs
+#   * Liste complète des items avec détails
+#   * Montant total
+
+class OrderCreateSerializer(serializers.ModelSerializer):
+    """
+    ✍️ TODO : À compléter
+    
+    NOTE : La gestion des produits se fera via OrderItem
+    """
+    class Meta:
+        model = Order
+        fields = []  # TODO
+    
+    # TODO: validate_status (doit être dans les choix)
+
+
+class OrderListSerializer(serializers.ModelSerializer):
+    """
+    📋 TODO : À compléter
+    """
+    # TODO: client_name
+    # TODO: items_count (nombre de lignes)
+    # TODO: total_amount (somme des subtotals)
+    
+    class Meta:
+        model = Order
+        fields = []  # TODO
+
+
+class OrderDetailSerializer(serializers.ModelSerializer):
+    """
+    🔍 TODO : À compléter
+    """
+    # TODO: items (liste des OrderItems avec détails)
+    # TODO: total_amount
+    # TODO: client_details
+    
+    class Meta:
+        model = Order
+        fields = '__all__'
+
+
+# ============================================================================
+# 📁 ORDERITEM SERIALIZERS
+# ============================================================================
+
+# TODO 8: Créer les serializers pour OrderItem
+# CONSIGNES :
+# - OrderItemCreateSerializer : order (ID), product (ID), quantity
+#   * Validation : quantity > 0
+#   * Validation : vérifier que le stock est suffisant
+# - OrderItemListSerializer : id, product_name, quantity, subtotal
+# - OrderItemDetailSerializer : tous les champs avec détails
+
+class OrderItemCreateSerializer(serializers.ModelSerializer):
+    """
+    ✍️ TODO : À compléter
+    """
+    class Meta:
+        model = OrderItem
+        fields = []  # TODO
+    
+    # TODO: validate_quantity
+    # TODO: validate (vérifier le stock disponible)
+
+
+class OrderItemListSerializer(serializers.ModelSerializer):
+    """
+    📋 TODO : À compléter
+    """
+    # TODO: product_name
+    # TODO: unit_price
+    # TODO: subtotal (utilisez la propriété du modèle)
+    
+    class Meta:
+        model = OrderItem
+        fields = []  # TODO
+
+
+class OrderItemDetailSerializer(serializers.ModelSerializer):
+    """
+    🔍 TODO : À compléter
+    """
+    # TODO: Détails complets du produit
+    # TODO: Détails de la commande
+    
+    class Meta:
+        model = OrderItem
+        fields = '__all__'
+
+
+
+    
     

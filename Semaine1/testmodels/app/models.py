@@ -45,8 +45,14 @@ class Product(BaseModel):
     def save(self, *args, **kwargs):
         if Product.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
             raise ValidationError(f"Le Produit '{self.name}' existe déjà.")
-        self.name = self.name.split().title()
+        self.name = self.name.split()
         return super().save( *args, **kwargs)
+    
+    @property
+    def in_stock(self):
+        if self.stock >0:
+            return True
+        return False
 
 
     def __str__(self):
@@ -75,6 +81,8 @@ class Order(BaseModel):
         Calcule la somme des sous-totaux de tous les articles de la commande.
         """
         return sum(item.item_subtotal for item in self.items.all())
+    
+     
     def __str__(self):
         return f"Order {self.order_id} by {self.user.username}"
 
