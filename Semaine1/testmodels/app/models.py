@@ -35,24 +35,27 @@ class Product(BaseModel):
     stock = models.PositiveIntegerField(default=0)
     supplier=models.ManyToManyField('Supplier',related_name='products')
     
-    
     class Meta:
         ordering=['name']
         verbose_name='Produit'
         verbose_name_plural='Produits'
         indexes =[models.Index(fields=['name', 'category'], name='product_name_category_idx')]
         
-    def save(self, *args, **kwargs):
-        if Product.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
-            raise ValidationError(f"Le Produit '{self.name}' existe déjà.")
-        self.name = self.name.split()
-        return super().save( *args, **kwargs)
+    # def clean(self):
+    #     self.name = " ".join(self.name.split()).strip()
+    #     if Product.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
+    #         raise ValidationError({'name': f"Un produit nommé '{self.name}' existe déjà."})
+
+        
+        
+    # def save(self, *args, **kwargs):
+      
+    #     self.full_clean()
+    #     return super().save( *args, **kwargs)
     
     @property
     def in_stock(self):
-        if self.stock >0:
-            return True
-        return False
+        return self.stock > 0
 
 
     def __str__(self):

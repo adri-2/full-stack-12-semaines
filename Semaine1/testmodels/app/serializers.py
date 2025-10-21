@@ -272,7 +272,7 @@ class ProductCreateSerializer(serializers.ModelSerializer):
     
     # TODO: validate_price
     def validate_price(self,data):
-        if data < 0:
+        if data <= 0:
             raise serializers.ValidationError("Validation : price > 0")
         return data
 
@@ -282,6 +282,15 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(" Validation : stock >= 0")
         return attrs
     # TODO: validate_name
+    def validate_name(self, value):
+        # Nettoyer le nom
+        cleaned_name = " ".join(value.split()).strip()
+
+        # Vérifier si un autre produit du même nom existe
+        if Product.objects.filter(name__iexact=cleaned_name).exists():
+            raise serializers.ValidationError(f"Un produit nommé '{cleaned_name}' existe déjà.")
+
+        return cleaned_name
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -321,6 +330,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     # TODO: suppliers (liste complète)
     supplier = SupplierDetailSerializer(read_only=True,many=True)
     # TODO: average_rating
+    average_rating=serializers.SerializerMethodField()
     # TODO: reviews_count
     reviews_count =serializers.SerializerMethodField()
     
